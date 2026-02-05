@@ -52,17 +52,17 @@ export function BadgeGrid() {
       />
       
       {/* Sub-header with Search and Filters */}
-      <div className="sticky top-14 z-40 bg-background/95 backdrop-blur-md">
-        <div className="mx-auto max-w-lg px-4 py-4">
+      <div className="sticky top-14 z-30 bg-background/95 backdrop-blur-md border-b border-border/30">
+        <div className="mx-auto max-w-lg px-4 py-3">
           {/* Search bar */}
-          <div className="relative mb-4">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search badges..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-2xl border-0 bg-card py-3 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+              className="w-full rounded-xl border-0 bg-card py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
             />
           </div>
 
@@ -73,15 +73,15 @@ export function BadgeGrid() {
             onSelect={setSelectedCategory}
           />
           
-          {/* Badge Timeline Calendar */}
-          <div className="mt-4">
+          {/* Badge Timeline - Compact */}
+          <div className="mt-3">
             <BadgeTimeline onOpenLivestream={handleOpenLivestream} />
           </div>
         </div>
       </div>
 
       {/* Badge list */}
-      <main className="flex-1 mx-auto max-w-lg px-4 pb-24">
+      <main className="flex-1 mx-auto max-w-lg w-full px-4 pb-24 pt-3">
         {filteredBadges.length > 0 ? (
           <div className="flex flex-col gap-2">
             {filteredBadges.map((badge, index) => (

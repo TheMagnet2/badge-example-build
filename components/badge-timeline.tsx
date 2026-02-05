@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Calendar, Radio } from "lucide-react";
+import { Radio, ChevronDown, ChevronUp } from "lucide-react";
 
 interface BadgeRelease {
   id: string;
@@ -29,189 +29,227 @@ interface BadgeTimelineProps {
 }
 
 export function BadgeTimeline({ onOpenLivestream }: BadgeTimelineProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [expanded, setExpanded] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const today = new Date();
 
-  // Generate days for the current week view
-  const getDaysInView = () => {
+  // Get 14 days starting from today
+  const getDays = () => {
     const days: Date[] = [];
-    const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(currentDate.getDate() - 3); // Show 3 days before and after
-
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
+    for (let i = 0; i < 14; i++) {
+      const day = new Date(today);
+      day.setDate(today.getDate() + i);
       days.push(day);
     }
     return days;
   };
 
-  const days = getDaysInView();
-
-  const formatDayName = (date: Date) => {
-    return date.toLocaleDateString("en-US", { weekday: "short" });
-  };
-
-  const formatDayNumber = (date: Date) => {
-    return date.getDate();
-  };
-
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-  };
+  const days = getDays();
 
   const isSameDay = (date1: Date, date2: Date) => {
     return date1.toDateString() === date2.toDateString();
+  };
+
+  const isToday = (date: Date) => {
+    return isSameDay(date, today);
   };
 
   const getReleasesForDate = (date: Date) => {
     return badgeReleases.filter((release) => isSameDay(release.date, date));
   };
 
-  const navigateWeek = (direction: "prev" | "next") => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(currentDate.getDate() + (direction === "next" ? 7 : -7));
-    setCurrentDate(newDate);
+  // Calculate progress through the 14-day period
+  const getProgress = () => {
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const hoursElapsed = (now.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
+    return Math.min((hoursElapsed / 24) * (100 / 14), 100 / 14);
   };
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    const releases = getReleasesForDate(date);
-    const liveRelease = releases.find((r) => r.isLive && r.livestreamUrl);
-    if (liveRelease && onOpenLivestream) {
-      onOpenLivestream(liveRelease.livestreamUrl!);
-    }
-  };
-
-  // Auto-scroll to today on mount
-  useEffect(() => {
-    if (scrollRef.current) {
-      const todayIndex = days.findIndex((d) => isToday(d));
-      if (todayIndex !== -1) {
-        const scrollAmount = todayIndex * 60 - scrollRef.current.offsetWidth / 2 + 30;
-        scrollRef.current.scrollTo({ left: scrollAmount, behavior: "smooth" });
+  const handleDayClick = (day: Date) => {
+    const releases = getReleasesForDate(day);
+    const hasReleases = releases.length > 0;
+    
+    if (hasReleases) {
+      setSelectedDate(isSameDay(day, selectedDate || new Date(0)) ? null : day);
+      
+      const liveRelease = releases.find((r) => r.isLive && r.livestreamUrl);
+      if (liveRelease && onOpenLivestream) {
+        onOpenLivestream(liveRelease.livestreamUrl!);
       }
     }
-  }, []);
+  };
 
   const selectedReleases = selectedDate ? getReleasesForDate(selectedDate) : [];
 
+  // Find upcoming releases
+  const upcomingReleases = badgeReleases
+    .filter((r) => r.date >= today)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .slice(0, 3);
+
+  const liveNow = badgeReleases.find((r) => r.isLive && isSameDay(r.date, today));
+
   return (
-    <div className="bg-card rounded-2xl p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Badge Releases</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => navigateWeek("prev")}
-            className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-secondary transition-colors"
-            aria-label="Previous week"
-          >
-            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-          </button>
-          <span className="text-xs text-muted-foreground min-w-[80px] text-center">
-            {currentDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-          </span>
-          <button
-            type="button"
-            onClick={() => navigateWeek("next")}
-            className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-secondary transition-colors"
-            aria-label="Next week"
-          >
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
-      </div>
-
-      {/* Days Row */}
-      <div
-        ref={scrollRef}
-        className="flex gap-2 overflow-x-auto pb-2 scrollbar-none"
+    <div className="bg-card/50 rounded-xl overflow-hidden">
+      {/* Compact Header Bar */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-3 py-2 hover:bg-secondary/30 transition-colors"
       >
-        {days.map((day) => {
-          const releases = getReleasesForDate(day);
-          const hasRelease = releases.length > 0;
-          const hasLive = releases.some((r) => r.isLive);
-          const isSelected = selectedDate && isSameDay(day, selectedDate);
+        <div className="flex items-center gap-2">
+          {liveNow ? (
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-red-500 uppercase tracking-wide">
+              <Radio className="h-2.5 w-2.5 animate-pulse" />
+              Live
+            </span>
+          ) : (
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+              Releases
+            </span>
+          )}
+          {upcomingReleases.length > 0 && (
+            <span className="text-xs text-foreground font-medium truncate max-w-[140px]">
+              {liveNow ? liveNow.name : upcomingReleases[0].name}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground">
+            {upcomingReleases.length} upcoming
+          </span>
+          {expanded ? (
+            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
+        </div>
+      </button>
 
-          return (
-            <button
-              key={day.toISOString()}
-              type="button"
-              onClick={() => handleDateSelect(day)}
-              className={cn(
-                "flex flex-col items-center justify-center min-w-[52px] h-[68px] rounded-xl transition-all",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                isToday(day) && !isSelected && "bg-accent/20",
-                isSelected && "bg-accent text-accent-foreground",
-                !isSelected && !isToday(day) && "bg-secondary/50 hover:bg-secondary"
-              )}
-            >
-              <span className={cn(
-                "text-[10px] uppercase",
-                isSelected ? "text-accent-foreground/80" : "text-muted-foreground"
-              )}>
-                {formatDayName(day)}
-              </span>
-              <span className={cn(
-                "text-lg font-semibold",
-                isSelected ? "text-accent-foreground" : "text-foreground"
-              )}>
-                {formatDayNumber(day)}
-              </span>
-              {/* Release indicator */}
-              <div className="flex gap-0.5 mt-0.5 h-2">
-                {hasLive ? (
-                  <Radio className="h-2 w-2 text-red-500 animate-pulse" />
-                ) : hasRelease ? (
-                  <div className="h-1.5 w-1.5 rounded-full bg-accent" />
-                ) : null}
-              </div>
-            </button>
-          );
-        })}
+      {/* Progress Bar Timeline */}
+      <div className="px-3 pb-2">
+        <div className="relative">
+          {/* Background track */}
+          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+            {/* Progress fill - animated */}
+            <div 
+              className="h-full bg-gradient-to-r from-accent to-accent/70 rounded-full transition-all duration-1000"
+              style={{ width: `${getProgress()}%` }}
+            />
+          </div>
+          
+          {/* Day markers */}
+          <div 
+            ref={scrollRef}
+            className="flex justify-between mt-1 overflow-x-auto scrollbar-none -mx-1 px-1"
+          >
+            {days.map((day, index) => {
+              const releases = getReleasesForDate(day);
+              const hasRelease = releases.length > 0;
+              const hasLive = releases.some((r) => r.isLive);
+              const isSelected = selectedDate && isSameDay(day, selectedDate);
+              const dayProgress = (index / 14) * 100;
+
+              return (
+                <button
+                  key={day.toISOString()}
+                  type="button"
+                  onClick={() => handleDayClick(day)}
+                  disabled={!hasRelease}
+                  className={cn(
+                    "flex flex-col items-center min-w-[28px] py-1 transition-all",
+                    hasRelease && "cursor-pointer hover:opacity-80",
+                    !hasRelease && "opacity-40 cursor-default"
+                  )}
+                >
+                  {/* Marker dot on the timeline */}
+                  <div className={cn(
+                    "w-2 h-2 rounded-full -mt-2.5 mb-1 transition-all",
+                    hasLive && "bg-red-500 animate-pulse ring-2 ring-red-500/30",
+                    hasRelease && !hasLive && "bg-accent ring-2 ring-accent/30",
+                    !hasRelease && isToday(day) && "bg-foreground/50",
+                    !hasRelease && !isToday(day) && "bg-transparent",
+                    isSelected && "scale-125"
+                  )} />
+                  
+                  {/* Day number */}
+                  <span className={cn(
+                    "text-[9px] font-medium",
+                    isToday(day) ? "text-accent" : "text-muted-foreground",
+                    isSelected && "text-foreground"
+                  )}>
+                    {day.getDate()}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* Selected Date Releases */}
-      {selectedDate && selectedReleases.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-border/50">
-          <div className="flex flex-col gap-2">
-            {selectedReleases.map((release) => (
-              <div
+      {/* Expanded Content */}
+      {expanded && (
+        <div className="px-3 pb-3 pt-1 border-t border-border/30">
+          {/* Quick upcoming list */}
+          <div className="flex flex-col gap-1.5 mt-2">
+            {upcomingReleases.map((release) => (
+              <button
                 key={release.id}
+                type="button"
+                onClick={() => {
+                  if (release.isLive && release.livestreamUrl && onOpenLivestream) {
+                    onOpenLivestream(release.livestreamUrl);
+                  }
+                }}
                 className={cn(
-                  "flex items-center justify-between px-3 py-2 rounded-lg",
-                  release.isLive ? "bg-red-500/10" : "bg-secondary/50"
+                  "flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors",
+                  release.isLive ? "bg-red-500/10 hover:bg-red-500/20" : "bg-secondary/30 hover:bg-secondary/50"
                 )}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   {release.isLive && (
-                    <span className="flex items-center gap-1 text-[10px] font-medium text-red-500 uppercase">
-                      <Radio className="h-2.5 w-2.5 animate-pulse" />
-                      Live
-                    </span>
+                    <Radio className="h-2.5 w-2.5 text-red-500 animate-pulse shrink-0" />
                   )}
-                  <span className="text-sm font-medium text-foreground">{release.name}</span>
+                  <span className="text-xs font-medium text-foreground truncate">
+                    {release.name}
+                  </span>
                 </div>
-                <span className="text-xs text-muted-foreground">{release.category}</span>
-              </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] text-muted-foreground">
+                    {release.category}
+                  </span>
+                  <span className={cn(
+                    "text-[10px] font-medium",
+                    isSameDay(release.date, today) ? "text-accent" : "text-muted-foreground"
+                  )}>
+                    {isSameDay(release.date, today) 
+                      ? "Today" 
+                      : release.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                </div>
+              </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* No releases message */}
-      {selectedDate && selectedReleases.length === 0 && (
-        <div className="mt-3 pt-3 border-t border-border/50">
-          <p className="text-xs text-muted-foreground text-center py-2">
-            No badge releases scheduled for this day
-          </p>
+      {/* Selected Date Detail (shows inline when a marker is clicked) */}
+      {selectedDate && selectedReleases.length > 0 && !expanded && (
+        <div className="px-3 pb-2">
+          <div className="flex items-center gap-2 px-2 py-1.5 bg-secondary/30 rounded-lg">
+            {selectedReleases[0].isLive && (
+              <Radio className="h-2.5 w-2.5 text-red-500 animate-pulse shrink-0" />
+            )}
+            <span className="text-xs font-medium text-foreground truncate">
+              {selectedReleases[0].name}
+            </span>
+            <span className="text-[10px] text-muted-foreground ml-auto">
+              {selectedReleases[0].category}
+            </span>
+          </div>
         </div>
       )}
     </div>
