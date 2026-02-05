@@ -146,7 +146,20 @@ export const badges: Badge[] = [
   },
 ];
 
-export const categories = ["All", "Membership", "Achievement", "Social", "Activity"];
+export const categories = [
+  "All", 
+  "Membership", 
+  "Achievement", 
+  "Social", 
+  "Activity",
+  "Gaming",
+  "Streaming",
+  "Events",
+  "Loyalty",
+  "Challenges",
+  "Seasonal",
+  "Limited Edition"
+];
 
 export const rarityConfig = {
   common: { label: "Common", color: "bg-slate-500", textColor: "text-slate-400" },

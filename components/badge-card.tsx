@@ -79,6 +79,7 @@ export function BadgeCard({ badge, onClick, index, notificationEnabled, onToggle
         "group flex w-full items-center gap-4 rounded-2xl p-4 transition-all duration-200",
         "bg-card hover:bg-secondary",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "h-[72px]", // Fixed height for consistent card sizing
         !isEarned && "opacity-60"
       )}
       style={{

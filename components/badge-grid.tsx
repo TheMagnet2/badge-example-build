@@ -7,6 +7,7 @@ import { BadgeModal } from "./badge-modal";
 import { CategoryFilter } from "./category-filter";
 import { HeaderNav } from "./header-nav";
 import { FooterNav } from "./footer-nav";
+import { BadgeTimeline } from "./badge-timeline";
 import { useNotifications } from "@/hooks/use-notifications";
 import { usePWA } from "@/hooks/use-pwa";
 import { Search } from "lucide-react";
@@ -24,6 +25,11 @@ export function BadgeGrid() {
   
   // Initialize PWA
   usePWA();
+
+  // Handle livestream opening
+  const handleOpenLivestream = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   const filteredBadges = badges.filter((badge) => {
     const matchesCategory =
@@ -66,6 +72,11 @@ export function BadgeGrid() {
             selected={selectedCategory}
             onSelect={setSelectedCategory}
           />
+          
+          {/* Badge Timeline Calendar */}
+          <div className="mt-4">
+            <BadgeTimeline onOpenLivestream={handleOpenLivestream} />
+          </div>
         </div>
       </div>
 

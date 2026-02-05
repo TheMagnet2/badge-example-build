@@ -14,7 +14,7 @@ export function CategoryFilter({
   onSelect,
 }: CategoryFilterProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+    <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto pb-1 scrollbar-none">
       {categories.map((category) => (
         <button
           key={category}
