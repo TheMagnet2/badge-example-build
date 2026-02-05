@@ -1,35 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { badges, categories, type Badge } from "@/lib/badges";
 import { BadgeCard } from "./badge-card";
 import { BadgeModal } from "./badge-modal";
 import { CategoryFilter } from "./category-filter";
-import { HeaderNav } from "./header-nav";
 import { FooterNav } from "./footer-nav";
-import { BadgeTimeline } from "./badge-timeline";
+import { TimelineModal } from "./timeline-modal";
 import { useNotifications } from "@/hooks/use-notifications";
 import { usePWA } from "@/hooks/use-pwa";
-import { Search } from "lucide-react";
+import { Search, Calendar, Bell, Award } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function BadgeGrid() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   
   const { 
     toggleBadgeNotification, 
-    toggleAllNotifications, 
+    toggleAllNotifications,
+    allNotificationsEnabled,
+    permission,
     isBadgeNotificationEnabled 
   } = useNotifications();
   
   // Initialize PWA
   usePWA();
-
-  // Handle livestream opening
-  const handleOpenLivestream = (url: string) => {
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
 
   const filteredBadges = badges.filter((badge) => {
     const matchesCategory =
@@ -44,16 +42,54 @@ export function BadgeGrid() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header Navigation */}
-      <HeaderNav 
-        earnedCount={earnedCount} 
-        totalCount={badges.length}
-        onToggleAllNotifications={toggleAllNotifications}
-      />
-      
-      {/* Sub-header with Search and Filters */}
-      <div className="sticky top-14 z-30 bg-background/95 backdrop-blur-md border-b border-border/30">
+      {/* Compact Top Bar */}
+      <div className="bg-background border-b border-border/30">
         <div className="mx-auto max-w-lg px-4 py-3">
+          {/* Title row with actions */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent">
+                <Award className="h-4 w-4 text-accent-foreground" />
+              </div>
+              <div>
+                <h1 className="text-base font-semibold text-foreground leading-tight">Badges</h1>
+                <p className="text-[10px] text-muted-foreground">
+                  {earnedCount}/{badges.length} earned
+                </p>
+              </div>
+            </div>
+            
+            {/* Action buttons */}
+            <div className="flex items-center gap-1">
+              {/* Timeline button */}
+              <button
+                type="button"
+                onClick={() => setIsTimelineOpen(true)}
+                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-secondary transition-colors"
+                aria-label="View badge release timeline"
+              >
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </button>
+              
+              {/* Notifications toggle */}
+              <button
+                type="button"
+                onClick={toggleAllNotifications}
+                className={cn(
+                  "relative flex h-9 w-9 items-center justify-center rounded-full transition-colors",
+                  "hover:bg-secondary",
+                  allNotificationsEnabled && permission === "granted" && "text-accent"
+                )}
+                aria-label="Toggle all notifications"
+              >
+                <Bell className="h-4 w-4" />
+                {allNotificationsEnabled && permission === "granted" && (
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent" />
+                )}
+              </button>
+            </div>
+          </div>
+
           {/* Search bar */}
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -66,22 +102,17 @@ export function BadgeGrid() {
             />
           </div>
 
-          {/* Category filter */}
+          {/* Category filter - horizontal scroll */}
           <CategoryFilter
             categories={categories}
             selected={selectedCategory}
             onSelect={setSelectedCategory}
           />
-          
-          {/* Badge Timeline - Compact */}
-          <div className="mt-3">
-            <BadgeTimeline onOpenLivestream={handleOpenLivestream} />
-          </div>
         </div>
       </div>
 
-      {/* Badge list */}
-      <main className="flex-1 mx-auto max-w-lg w-full px-4 pb-24 pt-3">
+      {/* Badge list - main focus area */}
+      <main className="flex-1 mx-auto max-w-lg w-full px-4 pb-24 pt-4 overflow-y-auto">
         {filteredBadges.length > 0 ? (
           <div className="flex flex-col gap-2">
             {filteredBadges.map((badge, index) => (
@@ -115,6 +146,12 @@ export function BadgeGrid() {
 
       {/* Badge detail modal */}
       <BadgeModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />
+      
+      {/* Timeline modal */}
+      <TimelineModal 
+        isOpen={isTimelineOpen} 
+        onClose={() => setIsTimelineOpen(false)} 
+      />
     </div>
   );
 }

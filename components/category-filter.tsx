@@ -14,15 +14,21 @@ export function CategoryFilter({
   onSelect,
 }: CategoryFilterProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4">
+    <div 
+      className={cn(
+        "flex gap-2 overflow-x-auto -mx-4 px-4 pb-1",
+        "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      )}
+    >
       {categories.map((category) => (
         <button
           key={category}
           type="button"
           onClick={() => onSelect(category)}
           className={cn(
-            "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200",
+            "shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-200",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "active:scale-95",
             selected === category
               ? "bg-foreground text-background"
               : "bg-card text-muted-foreground hover:text-foreground"
