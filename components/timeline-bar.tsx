@@ -141,7 +141,24 @@ const DAY_WIDTH = 48
   const UNIT_WIDTH_MOBILE = viewMode === "hours" ? HOUR_WIDTH_MOBILE : DAY_WIDTH_MOBILE
   const totalUnits = viewMode === "hours" ? totalHours : totalDays
 
-  const activeEvent = selectedEvent || hoveredEvent
+const activeEvent = selectedEvent || hoveredEvent
+
+  // Current time position for red indicator
+  const now = new Date()
+  const currentTimePosition = useMemo(() => {
+    if (viewMode === "hours") {
+      const hoursDiff = (now.getTime() - timelineStart.getTime()) / (1000 * 60 * 60)
+      return hoursDiff
+    }
+    const daysDiff = (now.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)
+    return daysDiff
+  }, [viewMode, timelineStart, now])
+
+  const currentTimeLabel = now.toLocaleTimeString("en-US", { 
+    hour: "numeric", 
+    minute: "2-digit",
+    hour12: true 
+  })
 
   return (
     <div className={cn("w-full", className)}>
@@ -293,9 +310,9 @@ const DAY_WIDTH = 48
             style={{ width: `max(100%, ${totalUnits * UNIT_WIDTH}px)` }}
           >
 {/* Time headers */}
-            <div className="h-14 flex border-b border-border sticky top-0 bg-card z-10">
+            <div className="h-16 md:h-14 flex border-b border-border sticky top-0 bg-card z-10 relative">
               {viewMode === "days" ? (
-                // Days view
+                // Days view - show month + day (e.g., "Feb 1")
                 days.map((day, index) => (
                   <div
                     key={index}
@@ -306,18 +323,16 @@ const DAY_WIDTH = 48
                     )}
                     style={{ width: `clamp(${UNIT_WIDTH_MOBILE}px, 5vw, ${UNIT_WIDTH}px)` }}
                   >
-                    {day.isFirstOfMonth && (
-                      <span className="text-[10px] font-semibold text-primary mb-0.5">
-                        {day.month}
-                      </span>
-                    )}
-                    <span className="text-[10px] text-muted-foreground/70 mb-0.5">
+                    <span className="text-[10px] md:text-xs font-medium text-primary/80">
+                      {day.month}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/70">
                       {day.dayName.slice(0, 2)}
                     </span>
                     <span
                       className={cn(
-                        "text-[10px] md:text-xs font-mono",
-                        day.isWeekend ? "text-muted-foreground/50" : "text-muted-foreground"
+                        "text-xs md:text-sm font-semibold",
+                        day.isWeekend ? "text-muted-foreground/60" : "text-foreground"
                       )}
                     >
                       {day.dayNum}
@@ -337,20 +352,36 @@ const DAY_WIDTH = 48
                     style={{ width: `clamp(${UNIT_WIDTH_MOBILE}px, 4vw, ${UNIT_WIDTH}px)` }}
                   >
                     {hour.isNewDay && (
-                      <span className="text-[9px] font-semibold text-primary mb-0.5">
+                      <span className="text-[10px] md:text-xs font-semibold text-primary">
                         {hour.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </span>
                     )}
                     <span
                       className={cn(
-                        "text-[9px] md:text-[10px] font-mono",
-                        hour.hour % 6 === 0 ? "text-muted-foreground" : "text-muted-foreground/40"
+                        "text-[10px] md:text-xs font-mono",
+                        hour.hour % 6 === 0 ? "text-foreground font-semibold" : "text-muted-foreground/50"
                       )}
                     >
                       {hour.hour % 3 === 0 ? formatHour(hour.hour) : ""}
                     </span>
                   </div>
                 ))
+              )}
+              
+              {/* Current time indicator in header */}
+              {currentTimePosition >= 0 && currentTimePosition <= totalUnits && (
+                <div 
+                  className="absolute bottom-0 z-20 flex flex-col items-center"
+                  style={{
+                    left: `calc(${currentTimePosition} * clamp(${UNIT_WIDTH_MOBILE}px, ${viewMode === "hours" ? "4vw" : "5vw"}, ${UNIT_WIDTH}px))`,
+                    transform: "translateX(-50%)"
+                  }}
+                >
+                  <span className="text-[9px] md:text-[10px] font-bold text-red-500 bg-background px-1 rounded">
+                    {currentTimeLabel}
+                  </span>
+                  <div className="w-0.5 h-2 bg-red-500" />
+                </div>
               )}
             </div>
 
