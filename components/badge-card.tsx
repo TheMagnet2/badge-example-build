@@ -17,6 +17,8 @@ import {
   Handshake,
   Lock,
   ChevronRight,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import type React from "react";
 
@@ -55,12 +57,19 @@ interface BadgeCardProps {
   badge: Badge;
   onClick: () => void;
   index: number;
+  notificationEnabled?: boolean;
+  onToggleNotification?: (badgeId: string) => void;
 }
 
-export function BadgeCard({ badge, onClick, index }: BadgeCardProps) {
+export function BadgeCard({ badge, onClick, index, notificationEnabled, onToggleNotification }: BadgeCardProps) {
   const Icon = iconMap[badge.icon] || Rocket;
   const isEarned = !!badge.earnedAt;
   const bgColor = colorMap[badge.color] || "bg-blue-500";
+
+  const handleNotificationClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleNotification?.(badge.id);
+  };
 
   return (
     <button
@@ -109,6 +118,27 @@ export function BadgeCard({ badge, onClick, index }: BadgeCardProps) {
         ) : isEarned ? (
           <span className="text-xs text-emerald-500">Earned</span>
         ) : null}
+        
+        {/* Notification Bell */}
+        {onToggleNotification && (
+          <button
+            type="button"
+            onClick={handleNotificationClick}
+            className={cn(
+              "flex h-7 w-7 items-center justify-center rounded-full transition-all",
+              "hover:bg-secondary/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              notificationEnabled ? "text-accent" : "text-muted-foreground"
+            )}
+            aria-label={notificationEnabled ? "Disable notifications" : "Enable notifications"}
+          >
+            {notificationEnabled ? (
+              <Bell className="h-3.5 w-3.5" />
+            ) : (
+              <BellOff className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
+        
         <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-hover:translate-x-1" />
       </div>
     </button>

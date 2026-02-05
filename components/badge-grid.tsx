@@ -1,16 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { badges, categories, type Badge } from "@/lib/badges";
 import { BadgeCard } from "./badge-card";
 import { BadgeModal } from "./badge-modal";
 import { CategoryFilter } from "./category-filter";
-import { Search, Award } from "lucide-react";
+import { HeaderNav } from "./header-nav";
+import { FooterNav } from "./footer-nav";
+import { useNotifications } from "@/hooks/use-notifications";
+import { usePWA } from "@/hooks/use-pwa";
+import { Search } from "lucide-react";
 
 export function BadgeGrid() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
+  
+  const { 
+    toggleBadgeNotification, 
+    toggleAllNotifications, 
+    isBadgeNotificationEnabled 
+  } = useNotifications();
+  
+  // Initialize PWA
+  usePWA();
 
   const filteredBadges = badges.filter((badge) => {
     const matchesCategory =
@@ -24,25 +37,17 @@ export function BadgeGrid() {
   const earnedCount = badges.filter((b) => b.earnedAt).length;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background">
-        <div className="mx-auto max-w-lg px-4 py-6">
-          {/* Title section */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent">
-                <Award className="h-5 w-5 text-accent-foreground" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">Badges</h1>
-                <p className="text-xs text-muted-foreground">
-                  {earnedCount} of {badges.length} earned
-                </p>
-              </div>
-            </div>
-          </div>
-
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header Navigation */}
+      <HeaderNav 
+        earnedCount={earnedCount} 
+        totalCount={badges.length}
+        onToggleAllNotifications={toggleAllNotifications}
+      />
+      
+      {/* Sub-header with Search and Filters */}
+      <div className="sticky top-14 z-40 bg-background/95 backdrop-blur-md">
+        <div className="mx-auto max-w-lg px-4 py-4">
           {/* Search bar */}
           <div className="relative mb-4">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -62,10 +67,10 @@ export function BadgeGrid() {
             onSelect={setSelectedCategory}
           />
         </div>
-      </header>
+      </div>
 
       {/* Badge list */}
-      <main className="mx-auto max-w-lg px-4 pb-8">
+      <main className="flex-1 mx-auto max-w-lg px-4 pb-24">
         {filteredBadges.length > 0 ? (
           <div className="flex flex-col gap-2">
             {filteredBadges.map((badge, index) => (
@@ -74,6 +79,8 @@ export function BadgeGrid() {
                 badge={badge}
                 index={index}
                 onClick={() => setSelectedBadge(badge)}
+                notificationEnabled={isBadgeNotificationEnabled(badge.id)}
+                onToggleNotification={toggleBadgeNotification}
               />
             ))}
           </div>
@@ -91,6 +98,9 @@ export function BadgeGrid() {
           </div>
         )}
       </main>
+
+      {/* Footer Navigation */}
+      <FooterNav />
 
       {/* Badge detail modal */}
       <BadgeModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />
