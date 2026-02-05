@@ -15,7 +15,10 @@ interface TimelineEvent {
   description?: string
   avatar?: string
   initials?: string
+  livestreamUrl?: string
 }
+
+type ViewMode = "days" | "hours"
 
 interface TimelineBarProps {
   events: TimelineEvent[]
@@ -48,15 +51,17 @@ export function TimelineBar({
 }: TimelineBarProps) {
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
   const [hoveredEvent, setHoveredEvent] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>("days")
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const { timelineStart, totalDays, days } = useMemo(() => {
+const { timelineStart, totalDays, days, hours, totalHours } = useMemo(() => {
     const allDates = events.flatMap((e) => [e.startDate, e.endDate])
     const minDate = propStartDate || new Date(Math.min(...allDates.map((d) => d.getTime())))
     const maxDate = propEndDate || new Date(Math.max(...allDates.map((d) => d.getTime())))
 
     const start = new Date(minDate)
     start.setDate(start.getDate() - 2)
+    start.setHours(0, 0, 0, 0)
     const end = new Date(maxDate)
     end.setDate(end.getDate() + 2)
 
@@ -77,16 +82,44 @@ export function TimelineBar({
       })
     }
 
+    // Generate hours list for the first 3 days (72 hours view)
+    const hoursList: { date: Date; hour: number; dayNum: number; isNewDay: boolean; isPM: boolean }[] = []
+    const hoursToShow = Math.min(dayCount * 24, 72) // Show max 72 hours (3 days)
+    for (let i = 0; i < hoursToShow; i++) {
+      const date = new Date(start)
+      date.setHours(date.getHours() + i)
+      hoursList.push({
+        date,
+        hour: date.getHours(),
+        dayNum: date.getDate(),
+        isNewDay: date.getHours() === 0,
+        isPM: date.getHours() >= 12,
+      })
+    }
+
     return {
       timelineStart: start,
       totalDays: dayCount,
       days: daysList,
+      hours: hoursList,
+      totalHours: hoursToShow,
     }
   }, [events, propStartDate, propEndDate])
 
-  const calculatePosition = (date: Date) => {
+const calculatePosition = (date: Date) => {
+    if (viewMode === "hours") {
+      const hoursDiff = (date.getTime() - timelineStart.getTime()) / (1000 * 60 * 60)
+      return hoursDiff
+    }
     const daysDiff = Math.ceil((date.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24))
     return daysDiff
+  }
+
+  const formatHour = (hour: number) => {
+    if (hour === 0) return "12a"
+    if (hour === 12) return "12p"
+    if (hour < 12) return `${hour}a`
+    return `${hour - 12}p`
   }
 
   const scroll = (direction: "left" | "right") => {
@@ -99,14 +132,20 @@ export function TimelineBar({
     }
   }
 
-  const DAY_WIDTH = 40
-  const DAY_WIDTH_MOBILE = 32
+const DAY_WIDTH = 48
+  const DAY_WIDTH_MOBILE = 40
+  const HOUR_WIDTH = 28
+  const HOUR_WIDTH_MOBILE = 24
+  
+  const UNIT_WIDTH = viewMode === "hours" ? HOUR_WIDTH : DAY_WIDTH
+  const UNIT_WIDTH_MOBILE = viewMode === "hours" ? HOUR_WIDTH_MOBILE : DAY_WIDTH_MOBILE
+  const totalUnits = viewMode === "hours" ? totalHours : totalDays
 
   const activeEvent = selectedEvent || hoveredEvent
 
   return (
     <div className={cn("w-full", className)}>
-      {/* Navigation */}
+{/* Navigation */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Button
@@ -128,6 +167,35 @@ export function TimelineBar({
             <span className="sr-only">Scroll right</span>
           </Button>
         </div>
+        
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-1 p-1 bg-secondary/50 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setViewMode("days")}
+            className={cn(
+              "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+              viewMode === "days" 
+                ? "bg-background text-foreground shadow-sm" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Days
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("hours")}
+            className={cn(
+              "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+              viewMode === "hours" 
+                ? "bg-background text-foreground shadow-sm" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Hours
+          </button>
+        </div>
+        
         <div className="text-xs text-muted-foreground font-mono">
           {events.length} events
         </div>
@@ -220,37 +288,70 @@ export function TimelineBar({
           ref={scrollRef}
           className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent touch-pan-x"
         >
-          <div 
+<div 
             className="min-w-full"
-            style={{ width: `max(100%, ${totalDays * DAY_WIDTH}px)` }}
+            style={{ width: `max(100%, ${totalUnits * UNIT_WIDTH}px)` }}
           >
-            {/* Day headers */}
+{/* Time headers */}
             <div className="h-14 flex border-b border-border sticky top-0 bg-card z-10">
-              {days.map((day, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    "flex-shrink-0 flex flex-col items-center justify-end pb-2",
-                    day.isWeekend && "bg-secondary/30",
-                    day.isFirstOfMonth && "border-l-2 border-primary/50"
-                  )}
-                  style={{ width: `clamp(${DAY_WIDTH_MOBILE}px, 5vw, ${DAY_WIDTH}px)` }}
-                >
-                  {day.isFirstOfMonth && (
-                    <span className="text-[10px] font-semibold text-primary mb-0.5">
-                      {day.month}
-                    </span>
-                  )}
-                  <span
+              {viewMode === "days" ? (
+                // Days view
+                days.map((day, index) => (
+                  <div
+                    key={index}
                     className={cn(
-                      "text-[10px] md:text-xs font-mono",
-                      day.isWeekend ? "text-muted-foreground/50" : "text-muted-foreground"
+                      "flex-shrink-0 flex flex-col items-center justify-end pb-2",
+                      day.isWeekend && "bg-secondary/30",
+                      day.isFirstOfMonth && "border-l-2 border-primary/50"
                     )}
+                    style={{ width: `clamp(${UNIT_WIDTH_MOBILE}px, 5vw, ${UNIT_WIDTH}px)` }}
                   >
-                    {day.dayNum}
-                  </span>
-                </div>
-              ))}
+                    {day.isFirstOfMonth && (
+                      <span className="text-[10px] font-semibold text-primary mb-0.5">
+                        {day.month}
+                      </span>
+                    )}
+                    <span className="text-[10px] text-muted-foreground/70 mb-0.5">
+                      {day.dayName.slice(0, 2)}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[10px] md:text-xs font-mono",
+                        day.isWeekend ? "text-muted-foreground/50" : "text-muted-foreground"
+                      )}
+                    >
+                      {day.dayNum}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                // Hours view
+                hours.map((hour, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "flex-shrink-0 flex flex-col items-center justify-end pb-2",
+                      hour.isNewDay && "border-l-2 border-primary/50",
+                      hour.hour >= 18 || hour.hour < 6 ? "bg-secondary/20" : ""
+                    )}
+                    style={{ width: `clamp(${UNIT_WIDTH_MOBILE}px, 4vw, ${UNIT_WIDTH}px)` }}
+                  >
+                    {hour.isNewDay && (
+                      <span className="text-[9px] font-semibold text-primary mb-0.5">
+                        {hour.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
+                    )}
+                    <span
+                      className={cn(
+                        "text-[9px] md:text-[10px] font-mono",
+                        hour.hour % 6 === 0 ? "text-muted-foreground" : "text-muted-foreground/40"
+                      )}
+                    >
+                      {hour.hour % 3 === 0 ? formatHour(hour.hour) : ""}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Event bars */}
@@ -270,22 +371,37 @@ export function TimelineBar({
                     onMouseLeave={() => setHoveredEvent(null)}
                     onClick={() => setSelectedEvent(selectedEvent === event.id ? null : event.id)}
                   >
-                    {/* Background grid */}
+{/* Background grid */}
                     <div className="absolute inset-0 flex">
-                      {days.map((day, idx) => (
-                        <div
-                          key={idx}
-                          className={cn(
-                            "flex-shrink-0 border-r border-border/30",
-                            day.isWeekend && "bg-secondary/30",
-                            day.isFirstOfMonth && "border-l-2 border-primary/50"
-                          )}
-                          style={{ width: `clamp(${DAY_WIDTH_MOBILE}px, 5vw, ${DAY_WIDTH}px)` }}
-                        />
-                      ))}
+                      {viewMode === "days" ? (
+                        days.map((day, idx) => (
+                          <div
+                            key={idx}
+                            className={cn(
+                              "flex-shrink-0 border-r border-border/30",
+                              day.isWeekend && "bg-secondary/30",
+                              day.isFirstOfMonth && "border-l-2 border-primary/50"
+                            )}
+                            style={{ width: `clamp(${UNIT_WIDTH_MOBILE}px, 5vw, ${UNIT_WIDTH}px)` }}
+                          />
+                        ))
+                      ) : (
+                        hours.map((hour, idx) => (
+                          <div
+                            key={idx}
+                            className={cn(
+                              "flex-shrink-0 border-r border-border/20",
+                              hour.isNewDay && "border-l-2 border-primary/50",
+                              hour.hour >= 18 || hour.hour < 6 ? "bg-secondary/20" : "",
+                              hour.hour % 6 === 0 && "border-r-border/40"
+                            )}
+                            style={{ width: `clamp(${UNIT_WIDTH_MOBILE}px, 4vw, ${UNIT_WIDTH}px)` }}
+                          />
+                        ))
+                      )}
                     </div>
 
-                    {/* Event bar */}
+{/* Event bar */}
                     <div
                       className={cn(
                         "absolute h-9 rounded-full bg-gradient-to-r shadow-lg transition-all duration-200 cursor-pointer flex items-center",
@@ -293,8 +409,12 @@ export function TimelineBar({
                         isActive ? "scale-y-110 shadow-xl ring-2 ring-white/20" : ""
                       )}
                       style={{
-                        left: `calc(${startDay} * clamp(${DAY_WIDTH_MOBILE}px, 5vw, ${DAY_WIDTH}px) + 4px)`,
-                        width: `calc(${Math.max(duration, 1)} * clamp(${DAY_WIDTH_MOBILE}px, 5vw, ${DAY_WIDTH}px) - 8px)`,
+                        left: viewMode === "hours" 
+                          ? `calc(${startDay} * clamp(${UNIT_WIDTH_MOBILE}px, 4vw, ${UNIT_WIDTH}px) + 2px)`
+                          : `calc(${startDay} * clamp(${UNIT_WIDTH_MOBILE}px, 5vw, ${UNIT_WIDTH}px) + 4px)`,
+                        width: viewMode === "hours"
+                          ? `calc(${Math.max(duration, 0.5)} * clamp(${UNIT_WIDTH_MOBILE}px, 4vw, ${UNIT_WIDTH}px) - 4px)`
+                          : `calc(${Math.max(duration, 1)} * clamp(${UNIT_WIDTH_MOBILE}px, 5vw, ${UNIT_WIDTH}px) - 8px)`,
                         minWidth: '28px',
                       }}
                     >
@@ -327,25 +447,38 @@ export function TimelineBar({
                       </div>
                     </div>
 
-                    {/* Tooltip - desktop only */}
+{/* Tooltip - desktop only */}
                     {isActive && (
                       <div
                         className="hidden md:block absolute z-20 bottom-full mb-2 px-4 py-3 bg-popover text-popover-foreground rounded-xl shadow-2xl border border-border min-w-[200px]"
                         style={{
-                          left: `calc(${startDay} * clamp(${DAY_WIDTH_MOBILE}px, 5vw, ${DAY_WIDTH}px) + ${duration * DAY_WIDTH / 2}px)`,
+                          left: `calc(${startDay} * clamp(${UNIT_WIDTH_MOBILE}px, 5vw, ${UNIT_WIDTH}px) + ${duration * UNIT_WIDTH / 2}px)`,
                           transform: "translateX(-50%)",
                         }}
                       >
                         <p className="font-semibold text-sm mb-1">{event.name}</p>
                         <p className="text-xs text-muted-foreground mb-2">
-                          {event.startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {event.endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {viewMode === "hours" ? (
+                            <>
+                              {event.startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} {event.startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} - {event.endDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                            </>
+                          ) : (
+                            <>
+                              {event.startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {event.endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                            </>
+                          )}
                         </p>
                         {event.description && (
                           <p className="text-xs text-muted-foreground">{event.description}</p>
                         )}
                         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
                           <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Duration</span>
-                          <span className="text-xs font-mono font-semibold text-foreground">{duration} days</span>
+                          <span className="text-xs font-mono font-semibold text-foreground">
+                            {viewMode === "hours" 
+                              ? `${Math.round(duration)}h` 
+                              : `${Math.ceil(duration)} days`
+                            }
+                          </span>
                         </div>
                       </div>
                     )}

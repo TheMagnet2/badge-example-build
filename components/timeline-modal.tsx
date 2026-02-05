@@ -14,8 +14,8 @@ const badgeReleases = [
   {
     id: "1",
     name: "Early Bird Badge",
-    startDate: new Date(2026, 1, 1),
-    endDate: new Date(2026, 1, 7),
+    startDate: new Date(2026, 1, 5, 9, 0), // 9 AM
+    endDate: new Date(2026, 1, 7, 18, 0),  // 6 PM
     description: "Available for the first week of February",
     initials: "EB",
     color: "from-amber-500 to-orange-600",
@@ -23,35 +23,37 @@ const badgeReleases = [
   {
     id: "2",
     name: "Valentine Special",
-    startDate: new Date(2026, 1, 10),
-    endDate: new Date(2026, 1, 16),
+    startDate: new Date(2026, 1, 5, 14, 0), // 2 PM
+    endDate: new Date(2026, 1, 5, 20, 0),   // 8 PM
     description: "Limited edition Valentine's Day badge",
     initials: "VS",
     color: "from-rose-500 to-pink-600",
+    livestreamUrl: "https://twitch.tv",
   },
   {
     id: "3",
     name: "Winter Champion",
-    startDate: new Date(2026, 1, 5),
-    endDate: new Date(2026, 1, 20),
+    startDate: new Date(2026, 1, 5, 0, 0),
+    endDate: new Date(2026, 1, 8, 23, 59),
     description: "Complete winter challenges to earn",
     initials: "WC",
     color: "from-cyan-500 to-blue-600",
   },
   {
     id: "4",
-    name: "Community Hero",
-    startDate: new Date(2026, 1, 15),
-    endDate: new Date(2026, 1, 28),
-    description: "Help 10 community members",
-    initials: "CH",
+    name: "Live Stream Drop",
+    startDate: new Date(2026, 1, 6, 19, 0), // 7 PM
+    endDate: new Date(2026, 1, 6, 22, 0),   // 10 PM
+    description: "Watch the live stream to claim",
+    initials: "LS",
     color: "from-emerald-500 to-teal-600",
+    livestreamUrl: "https://youtube.com/live",
   },
   {
     id: "5",
     name: "Stream Legend",
-    startDate: new Date(2026, 1, 8),
-    endDate: new Date(2026, 1, 22),
+    startDate: new Date(2026, 1, 7, 12, 0), // Noon
+    endDate: new Date(2026, 1, 7, 16, 0),   // 4 PM
     description: "Watch 50 hours of streams",
     initials: "SL",
     color: "from-violet-500 to-purple-600",
